@@ -12,12 +12,15 @@
 #define PROC_CPU  "/proc/stat"
 #define PROC_SOFTIRQ "/proc/softirqs"
 #define PROC_INTERRUPTS "/proc/interrupts"
+#define PROC_SOFTNET_STATS "/proc/net/softnet_stat"
 
 #define N_SOFTIRQ_VECTORS 10
 
 #define C_START "[48;5;"
 #define C_END   "m"
 #define C_RESET "[0m"
+
+#define VERSION 1.1
 
 // this is a high contrast 16 colour scale based on an old astrophysics false colour scheme from my childhood. 
 #define max_colors 16
@@ -31,6 +34,7 @@ char *colors[] = { "17", "19", "20", "32", "37", "40", "46", "82", "156", "226",
 #define TYPE_IRQ 1
 #define TYPE_SOFTIRQ 2
 #define TYPE_IRQSUM 3
+#define TYPE_SOFTNET_PACKETS 4
 
 struct line_struct {
      int cursor;
@@ -68,7 +72,8 @@ void usage(char *argv[])
      printf("usage: -S <label> Show the SOFTIRQ vector corresponding with that label, e.g. SCHED, NET_RX\n");
      printf("usage: -I <label> Show the IRQ activity for that vector from /proc/interrupts e.g. 75, NMI\n");
      printf("usage: -M <string> Sum the IRQ activity across all vectors that match this terminal string e.g. p5p1-TxRx\n");
-     printf("Limits: max_metrics=%d, max_cpus=%d\n",MAX_METRICS, MAX_CPUS);
+     printf("usage: -P <string> Show the activity in the softnet_stats by column: packets, dropped, squeeze\n");
+     printf("Version %f, Limits: max_metrics=%d, max_cpus=%d\n",VERSION, MAX_METRICS, MAX_CPUS);
      exit(0);
 }
 
@@ -107,6 +112,57 @@ int get_procstat_column(char *name, char *argv[])
      return -1; // keep gcc happy 
 }
 
+int get_procsoftnet_column(char *name, char *argv[])
+{
+     int len = strlen(name);
+     
+     if (strncmp(name,"packets",len)==0) return 0;
+     if (strncmp(name,"dropped",len)==0) return 1;
+     if (strncmp(name,"squeeze",len)==0) return 2;
+     if (strncmp(name,"collision",len)==0) return 3;
+     if (strncmp(name,"recv_rps",len)==0) return 4;
+     if (strncmp(name,"flow_limit",len)==0) return 5;
+     
+     usage(argv);
+     return -1; // keep gcc happy 
+}
+
+void gather_softnet_metrics(struct metrics_struct *m)
+{
+     FILE *fp;
+     char line[1024], *endptr;
+     int cpu_count = topology.number_of_cpus;
+     int c;
+     unsigned long int datum;
+
+     if ((fp = fopen(PROC_SOFTNET_STATS,"r")) == NULL) return;
+     
+     // line format is one line per cpu. Similar to cpu stats
+     // Columns. Total packets processed, packets dropped, timesqueezed, cpu_collision, recv_rps, flow_limit
+     //          We look for 'packets', 'dropped', 'squeeze'
+     for (c=0;c<cpu_count;c++) {
+	  if (fgets(line,1024,fp) == NULL) return;
+	  endptr=line-1; // first column has no space. 
+	  switch(m->index) {
+	  case 5: // column 6 - flow_limit
+	       datum  = strtoul(endptr+1,&endptr,16);	       
+	  case 4: // column 5 - recv_rps
+	       datum  = strtoul(endptr+1,&endptr,16);	       
+	  case 3: // column 4 - collision
+	       datum  = strtoul(endptr+1,&endptr,16);	       
+	  case 2: // column 3 - squeeze
+	       datum  = strtoul(endptr+1,&endptr,16);	       
+	  case 1: // column 2 - dropped
+	       datum  = strtoul(endptr+1,&endptr,16);
+	  case 0: // column 1 - packets
+	       datum  = strtoul(endptr+1,&endptr,16);
+	  }
+//	  printf("parsed from softnet_stat cpu %d, column %d, value %lu\n",c,m->index,datum);
+	  m->current[c]=datum;
+     }
+     fclose(fp);
+     return;
+}
 
 void gather_cpu_metrics(struct metrics_struct *m)
 {
@@ -156,7 +212,6 @@ void gather_cpu_metrics(struct metrics_struct *m)
 	       datum  = strtoul(endptr+1,&endptr,10);
 	       all+=datum;
 	  }
-//	  printf("parsed the following in jiffies: cpu %lu, usertime %lu\n",cpuid,user);
 	  if (m->index == 0) m->current[cpuid]= all; else m->current[cpuid]=datum;
      }
      fclose(fp);
@@ -371,7 +426,7 @@ int main(int argc,char *argv[])
      int interval = 1;
      int timespan = -1;
           
-     const char *optstring="C:I:S:M:t:i:h";
+     const char *optstring="C:I:S:M:P:t:i:h";
 
      irqnuma_init_topology();
      
@@ -382,7 +437,7 @@ int main(int argc,char *argv[])
 	  switch (opt) {
 	  case 'C':
 	       metrics[metric_count].type=TYPE_CPU;
-	       sprintf(metrics[metric_count].label,"CPU ");
+	       sprintf(metrics[metric_count].label,"cpu ");
 	       strncat(metrics[metric_count].label,optarg,MAX_LABEL-5);
 	       metrics[metric_count].label_length = strlen(metrics[metric_count].label);
 	       metrics[metric_count].index = get_procstat_column(optarg,argv);
@@ -406,6 +461,14 @@ int main(int argc,char *argv[])
 	       metrics[metric_count].label_length = strlen(metrics[metric_count].label);
 	       metric_count ++;
 	       break;	       
+	  case 'P':
+	       metrics[metric_count].type=TYPE_SOFTNET_PACKETS;
+	       sprintf(metrics[metric_count].label,"softnet ");
+	       strncat(metrics[metric_count].label,optarg,MAX_LABEL-9);
+	       metrics[metric_count].index = get_procsoftnet_column(optarg,argv);
+	       metrics[metric_count].label_length = strlen(metrics[metric_count].label);
+	       metric_count ++;
+	       break;
 	  case 't':
 	       timespan = atoi(optarg);
 	       break;
@@ -454,8 +517,12 @@ int main(int argc,char *argv[])
 	       case TYPE_IRQSUM:
 		    gather_irqsum_metrics(&metrics[m]);
 		    break;
+	       case TYPE_SOFTNET_PACKETS:
+		    gather_softnet_metrics(&metrics[m]);
+		    break;
 	       default:
-		    error("unknown metric type, internal consistency error");
+		    fprintf(stderr,"unknown metric type, internal consistency error\n");
+		    exit(-1);
 	       }
 	  }
 	  display_metric_heatmap(now,interval_count);
