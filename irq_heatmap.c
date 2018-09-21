@@ -20,13 +20,13 @@
 #define C_END   "m"
 #define C_RESET "[0m"
 
-#define VERSION 1.1
+#define VERSION 1.2
 
 // this is a high contrast 16 colour scale based on an old astrophysics false colour scheme from my childhood. 
 #define max_colors 16
 char *colors[] = { "17", "19", "20", "32", "37", "40", "46", "82", "156", "226", "214", "202", "213", "201", "196", "15"};
      
-#define MAX_METRICS 8
+#define MAX_METRICS 16
 #define MAX_LABEL   64
 #define MAX_CPUS (MAX_SOCKETS*MAX_THREADS*MAX_CORES)  
 
@@ -63,17 +63,50 @@ struct metrics_struct {
 
 int metric_count;
 
+// 
+void dump_state()
+{
+     int m,c;
+   
+     fprintf(stderr,"Dumping state\n");
+     irqnuma_dump_topology();
+     fprintf(stderr,"metric count = %d\n",metric_count);
+     for (m=0;m<metric_count;m++) {
+	  fprintf(stderr,"m->type %d, m->label %s, m->label_length %d,m->index %d\n",metrics[m].type,metrics[m].label,metrics[m].label_length,metrics[m].index);
+	  fprintf(stderr,"m->previous: ");
+	  for (c=0;c<topology.number_of_cpus;c++) fprintf(stderr," %lu",metrics[m].previous[c]);
+	  fprintf(stderr,"\nm->current: ");
+	  for (c=0;c<topology.number_of_cpus;c++) fprintf(stderr," %lu",metrics[m].current[c]);
+	  fprintf(stderr,"\n");
+     }
+     return;
+}
+
+void reset_state()
+{
+     int m;
+     
+     for (m=0;m<metric_count;m++) {
+	  memset((void *)&metrics[m].previous,0,sizeof(metrics[m].previous));
+	  memset((void *)&metrics[m].current,0,sizeof(metrics[m].current));
+     }
+
+     return;
+}
+
 void usage(char *argv[]) 
 {
      printf("usage: %s -C | -S <label> | -I <label> [-i interval] [-t duration]\n",argv[0]);
      printf("usage: interval, duration in seconds. interval default is 1, duration is unlimited\n");
-     printf("usage: -C <label> Show cpu time for user,nice,sys,idle,wio,irq,softirq (in jiffies from /proc/stat).\n");
+     printf("usage: -C <label> Show cpu time for user,nice,sys,idle,wio,irq,softirq. See note below.\n");
      printf("                  the label 'all' will show the sum of user,nice,sys,wio,irq,softirq\n");
      printf("usage: -S <label> Show the SOFTIRQ vector corresponding with that label, e.g. SCHED, NET_RX\n");
      printf("usage: -I <label> Show the IRQ activity for that vector from /proc/interrupts e.g. 75, NMI\n");
      printf("usage: -M <string> Sum the IRQ activity across all vectors that match this terminal string e.g. p5p1-TxRx\n");
      printf("usage: -P <string> Show the activity in the softnet_stats by column: packets, dropped, squeeze\n");
-     printf("Version %f, Limits: max_metrics=%d, max_cpus=%d\n",VERSION, MAX_METRICS, MAX_CPUS);
+     printf("Version %f, Limits: max_metrics=%d, max_cpus=%d, clock tick ms=%d\n",VERSION, MAX_METRICS, MAX_CPUS,topology.clock_tick_ms);
+     printf("CPU time. This is taken from the jiffies from /proc/stat. Its then scaled up to milliseconds using _SC_CLK_TCK.\n");
+     printf("\tThis means that 100%% cpu is 1000ms per second. This displays as the number 'a'\n");
      exit(0);
 }
 
@@ -85,7 +118,7 @@ void error()
 
 // this is how we convert the delta to a displayed value. In this case we're taking the power of 2 via bitshift
 // it would be possible to have other scale factors. 
-unsigned int power2(unsigned long int delta)
+unsigned int shift_log2(unsigned long int delta)
 {
      int i=0;
      while (delta >= 1) {
@@ -212,7 +245,7 @@ void gather_cpu_metrics(struct metrics_struct *m)
 	       datum  = strtoul(endptr+1,&endptr,10);
 	       all+=datum;
 	  }
-	  if (m->index == 0) m->current[cpuid]= all; else m->current[cpuid]=datum;
+	  if (m->index == 0) m->current[cpuid]= all*topology.clock_tick_ms; else m->current[cpuid]=datum*topology.clock_tick_ms;
      }
      fclose(fp);
      return;
@@ -236,6 +269,8 @@ void gather_tagged_table_metrics(struct metrics_struct *m, char *table_name)
 	       break;
 	  }
      }
+     fclose(fp);
+     
      if (!found_flag) {
 	  fprintf(stderr,"Could not find label %s in file %s\n",m->label,table_name);
 	  exit(-1);
@@ -248,7 +283,6 @@ void gather_tagged_table_metrics(struct metrics_struct *m, char *table_name)
 	  m->current[c]=thing;
 	  startptr = endptr+1;
      }
-     fclose(fp);
      return;
 }
 
@@ -271,6 +305,7 @@ void gather_irqsum_metrics(struct metrics_struct *m)
      while (fgets(line,4096,fp) != NULL) {
 	  // get the last ' ' in the string. 
 	  cp = strrchr(line,' ');
+	  fclose(fp);
 	  if (cp == NULL) return;
 	  cp++;
 	  if (strncmp(cp,m->label,m->label_length) == 0) {
@@ -278,6 +313,7 @@ void gather_irqsum_metrics(struct metrics_struct *m)
 //	       printf("found %s in |%s|\n",m->label,line);
 	       // skip past the label: 
 	       cp = strchr(line,':');
+	       fclose(fp);
 	       if (cp == NULL) return;
 	       
 	       startptr = cp+1;
@@ -289,6 +325,8 @@ void gather_irqsum_metrics(struct metrics_struct *m)
 	       }
 	  } // a matched thing. 
      }
+     fclose(fp);
+
      if (found_flag==0) {
 	  fprintf(stderr,"Could not find label %s in file %s\n",m->label,PROC_INTERRUPTS);
 	  exit(-1);
@@ -378,6 +416,7 @@ void display_metric_heatmap(time_t now, int interval_count)
      int m,s,t,c;
      struct tm *tmp;
      char timestamp[256];
+     unsigned long int sum;
      
      tmp = localtime(&now);
      strftime(timestamp,sizeof(timestamp),"%H:%M:%S",tmp);
@@ -385,12 +424,14 @@ void display_metric_heatmap(time_t now, int interval_count)
      for (m=0;m<metric_count;m++) {
 	  for (s=0;s<topology.number_of_sockets;s++) {
 	       for (t=0;t<topology.map[s].thread_count;t++) {
+		    sum=0;
 		    for (c=0;c<topology.map[s].threads[t].core_count;c++){
 			 int cpuid = topology.map[s].threads[t].cores[c].cpu_id;
 			 int delta = metrics[m].current[cpuid] - metrics[m].previous[cpuid];
 			 int value;
 			 
-			 value = power2(delta);
+			 value = shift_log2(delta);
+			 sum+=value;
 			 if (value >= max_colors) value=max_colors - 1;
 			 fprintf(stdout,"%s%s%s%x",C_START,colors[value],C_END,value);
 		    }

@@ -179,10 +179,37 @@ void irqnuma_init_topology()
      return;
 }
 
+void irqnuma_dump_topology()
+{
+     int s,c,t;
+     
+     fprintf(stderr,"Topology_Dump\n");
+     fprintf(stderr,"topology.number_of_sockets = %d\n",topology.number_of_sockets);
+     fprintf(stderr,"topology.number_of_cpus = %d\n",topology.number_of_cpus);
+     fprintf(stderr,"topology.clock_tick_duration = %d\n",topology.clock_tick_ms);
+     fprintf(stderr,"number of hyperthreads = %d\n",irqnuma_num_hyperthreads());
+     
+     for (s=0;s<topology.number_of_sockets;s++) {
+	  fprintf(stderr,"Socket %d\n",s);
+	  fprintf(stderr," configured %d\n",topology.map[s].configured);
+	  fprintf(stderr," number of threads %d\n", topology.map[s].thread_count);
+	  for (t=0;t<topology.map[s].thread_count;t++) {
+	       fprintf(stderr,"  Thread %d\n",t);
+	       fprintf(stderr,"  core count %d\n",topology.map[s].threads[t].core_count);
+	       fprintf(stderr,"  configured %d\n",topology.map[s].threads[t].configured);
+	       for (c=0;c< topology.map[s].threads[t].core_count; c++) {
+		    fprintf(stderr,"   core %d, core_id %d, cpu id %d\n",c,topology.map[s].threads[t].cores[c].core_id,topology.map[s].threads[t].cores[c].cpu_id);
+	       }
+	  }
+     }
+}
+
+
 #ifdef DEBUG
+
 int main (int argc, char *argv[])
 {
-     int cpu_count,i,s,c,t;
+     int cpu_count,i;
      
      if (numa_available() == -1) {
 	  printf ("numalib reports as unavailable\n");
@@ -191,35 +218,18 @@ int main (int argc, char *argv[])
      
      cpu_count = numa_num_configured_cpus();
 
-     printf("Raw Data Dump\n");
-     printf("cpu count %d, ht per physical core%d\n",cpu_count,irqnuma_num_hyperthreads());
-     printf("duration of a clock tick (jiffy) %d ms\n",irqnuma_get_clocktick_ms());
-     printf("Table Dump\ncpuid\tpackage\tcore\ttid\n");
+     fprintf(stderr,"Raw Data Dump\n");
+     fprintf(stderr,"cpu count %d, ht per physical core%d\n",cpu_count,irqnuma_num_hyperthreads());
+     fprintf(stderr,"duration of a clock tick (jiffy) %d ms\n",irqnuma_get_clocktick_ms());
+     fprintf(stderr,"Table Dump\ncpuid\tpackage\tcore\ttid\n");
      for (i=0;i<cpu_count;i++) {
-	  printf("%d\t%d\t%d\t%d\n",i,irqnuma_get_packageid(i),irqnuma_get_coreid(i),irqnuma_get_threadid(i));
+	  fprintf(stderr,"%d\t%d\t%d\t%d\n",i,irqnuma_get_packageid(i),irqnuma_get_coreid(i),irqnuma_get_threadid(i));
      }
      
      irqnuma_init_topology();
+
+     irqnuma_dump_topology();
      
-     printf("init_topology results\n");
-     printf("topology.number_of_sockets = %d\n",topology.number_of_sockets);
-     printf("topology.number_of_cpus = %d\n",topology.number_of_cpus);
-     printf("topology.clock_tick_duration = %d\n",topology.clock_tick_ms);
-     printf("number of hyperthreads = %d\n",irqnuma_num_hyperthreads());
-     
-     for (s=0;s<topology.number_of_sockets;s++) {
-	  printf ("Socket %d\n",s);
-	  printf (" configured %d\n",topology.map[s].configured);
-	  printf (" number of threads %d\n", topology.map[s].thread_count);
-	  for (t=0;t<topology.map[s].thread_count;t++) {
-	       printf ("  Thread %d\n",t);
-	       printf ("  core count %d\n",topology.map[s].threads[t].core_count);
-	       printf ("  configured %d\n",topology.map[s].threads[t].configured);
-	       for (c=0;c< topology.map[s].threads[t].core_count; c++) {
-		    printf("   core %d, core_id %d, cpu id %d\n",c,topology.map[s].threads[t].cores[c].core_id,topology.map[s].threads[t].cores[c].cpu_id);
-	       }
-	  }
-     }
      return 0;
 }
 #endif    

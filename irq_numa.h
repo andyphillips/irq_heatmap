@@ -50,4 +50,6 @@ int irqnuma_get_packageid(int cpuid);
 int irqnuma_get_coreid(int cpuid);
 int irqnuma_get_threadid(int cpuid);
 void irqnuma_add_cpu_to_topology(int cpuid, int socket, int coreid, int thread_id);
+int irqnuma_get_clocktick_ms(void);
 void irqnuma_init_topology(void);
+void irqnuma_dump_topology(void);
