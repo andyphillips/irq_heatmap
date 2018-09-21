@@ -305,17 +305,20 @@ void gather_irqsum_metrics(struct metrics_struct *m)
      while (fgets(line,4096,fp) != NULL) {
 	  // get the last ' ' in the string. 
 	  cp = strrchr(line,' ');
-	  fclose(fp);
-	  if (cp == NULL) return;
+	  if (cp == NULL) {
+	       fclose(fp);
+	       return;
+	  }
 	  cp++;
 	  if (strncmp(cp,m->label,m->label_length) == 0) {
 	       found_flag ++;
 //	       printf("found %s in |%s|\n",m->label,line);
 	       // skip past the label: 
 	       cp = strchr(line,':');
-	       fclose(fp);
-	       if (cp == NULL) return;
-	       
+	       if (cp == NULL) {
+		    fclose(fp);
+		    return;
+	       }
 	       startptr = cp+1;
 	       for (c=0;c<cpu_count;c++) {
 		    thing = strtoul(startptr,&endptr,10); 
