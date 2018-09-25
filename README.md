@@ -37,4 +37,4 @@ Allows a terminal visualisation of activity in the following files;
 
 
 
-[simple_cpu]:
+[simple_cpu]:https://github.com/andyphillips/irq_heatmap/raw/master/images/cpu_simple.png
