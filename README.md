@@ -89,40 +89,39 @@ Useful late at night.
 
 Run irq_heatmap without arguments or with -h to get help. 
 
->usage: ./irq_heatmap -C | -S <label> | -I <label> [-i interval] [-t duration]
->usage: interval, duration in seconds. interval default is 1, duration is unlimited
->
->usage: -C <label> Show cpu time for user,nice,sys,idle,wio,irq,softirq. See note below.
->                  the label 'all' will show the sum of user,nice,sys,wio,irq,softirq
->usage: -S <label> Show the SOFTIRQ vector corresponding with that label, e.g. SCHED, NET_RX
->usage: -I <label> Show the IRQ activity for that vector from /proc/interrupts e.g. 75, NMI
->usage: -M <string> Sum the IRQ activity across all vectors that match this terminal string e.g. p5p1-TxRx
->usage: -P <string> Show the activity in the softnet_stats by column: packets, dropped, squeeze
->
->usage: -Z <string> Choose a color scale: bgy (blue green yellow, default), red (red temperature scale for loren acton), rbw (rainbow, long to short wavelengths)
->
->Version 1.200000, Limits: max_metrics=16, max_cpus=1024, clock tick ms=10
->
->CPU time. This is taken from the jiffies from /proc/stat. Its then scaled up to milliseconds using _SC_CLK_TCK.
->	   This means that 100% cpu is 1000ms per second. This displays as the number 'a'
->Scale is log2. So '9' is a delta of 2^9 (or 1<<9) per interval
->
->Colours and scales
->	bgy	red	rbw	mono	scale
->	0	0	0	0 - 2^0 or 1
->	1	1	1	1 - 2^1 or 2
->	2	2	2	2 - 2^2 or 4
->	3	3	3	3 - 2^3 or 8
->	4	4	4	4 - 2^4 or 16
->	5	5	5	5 - 2^5 or 32
->	6	6	6	6 - 2^6 or 64
->	7	7	7	7 - 2^7 or 128
->	8	8	8	8 - 2^8 or 256
->	9	9	9	9 - 2^9 or 512
->	a	a	a	a - 2^10 or 1024
->	b	b	b	b - 2^11 or 2048
->	c	c	c	c - 2^12 or 4096
->	d	d	d	d - 2^13 or 8192
->	e	e	e	e - 2^14 or 16384
->	f	f	f	f - 2^15 or 32768
->
+usage: ./irq_heatmap -C | -S <label> | -I <label> [-i interval] [-t duration]
+usage: interval, duration in seconds. interval default is 1, duration is unlimited
+
+usage: -C <label> Show cpu time for user,nice,sys,idle,wio,irq,softirq. See note below.
+                  the label 'all' will show the sum of user,nice,sys,wio,irq,softirq
+usage: -S <label> Show the SOFTIRQ vector corresponding with that label, e.g. SCHED, NET_RX
+usage: -I <label> Show the IRQ activity for that vector from /proc/interrupts e.g. 75, NMI
+usage: -M <string> Sum the IRQ activity across all vectors that match this terminal string e.g. p5p1-TxRx
+usage: -P <string> Show the activity in the softnet_stats by column: packets, dropped, squeeze
+
+usage: -Z <string> Choose a color scale: bgy (blue green yellow, default), red (red temperature scale for loren acton), rbw (rainbow, long to short wavelengths)
+
+Version 1.200000, Limits: max_metrics=16, max_cpus=1024, clock tick ms=10
+
+CPU time. This is taken from the jiffies from /proc/stat. Its then scaled up to milliseconds using _SC_CLK_TCK.
+	   This means that 100% cpu is 1000ms per second. This displays as the number 'a'
+Scale is log2. So '9' is a delta of 2^9 (or 1<<9) per interval
+
+Colours and scales
+	bgy	red	rbw	mono	scale
+	0	0	0	0 - 2^0 or 1
+	1	1	1	1 - 2^1 or 2
+	2	2	2	2 - 2^2 or 4
+	3	3	3	3 - 2^3 or 8
+	4	4	4	4 - 2^4 or 16
+	5	5	5	5 - 2^5 or 32
+	6	6	6	6 - 2^6 or 64
+	7	7	7	7 - 2^7 or 128
+	8	8	8	8 - 2^8 or 256
+	9	9	9	9 - 2^9 or 512
+	a	a	a	a - 2^10 or 1024
+	b	b	b	b - 2^11 or 2048
+	c	c	c	c - 2^12 or 4096
+	d	d	d	d - 2^13 or 8192
+	e	e	e	e - 2^14 or 16384
+	f	f	f	f - 2^15 or 32768
