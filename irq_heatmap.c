@@ -22,10 +22,16 @@
 
 #define VERSION 1.2
 
-// this is a high contrast 16 colour scale based on an old astrophysics false colour scheme from my childhood. 
 #define max_colors 16
-char *colors[] = { "17", "19", "20", "32", "37", "40", "46", "82", "156", "226", "214", "202", "213", "201", "196", "15"};
-     
+//                           0     1     2     3     4     5     6     7     8     9     a     b     c     d     e     f 
+char *bgy_scale[] =      { "17", "21", "32", "37", "43", "40", "47", "82","118","156","154","190","226","228","230", "15"};
+char *red_temp_scale[] = { "16", "52", "88","124","160","196","202","208","214","220","221","226","228","229","231","255"};
+char *rbw_scale[] =      { "52","124","196","166","208","214","226","155", "83", "46", "49", "51", "45","111","147","201"};
+char *mono_scale[] =     {"233","235","236","238","240","242","244","246","247","249","250","252","253","254","255","231"};
+//char *colors[] = { "17", "19", "20", "32", "37", "40", "46", "82", "156", "201", "213", "196", "202", "214", "226", "15"};
+
+char **colors;
+
 #define MAX_METRICS 16
 #define MAX_LABEL   64
 #define MAX_CPUS (MAX_SOCKETS*MAX_THREADS*MAX_CORES)  
@@ -96,17 +102,27 @@ void reset_state()
 
 void usage(char *argv[]) 
 {
+     int i;
+     
      printf("usage: %s -C | -S <label> | -I <label> [-i interval] [-t duration]\n",argv[0]);
-     printf("usage: interval, duration in seconds. interval default is 1, duration is unlimited\n");
+     printf("usage: interval, duration in seconds. interval default is 1, duration is unlimited\n\n");
      printf("usage: -C <label> Show cpu time for user,nice,sys,idle,wio,irq,softirq. See note below.\n");
      printf("                  the label 'all' will show the sum of user,nice,sys,wio,irq,softirq\n");
      printf("usage: -S <label> Show the SOFTIRQ vector corresponding with that label, e.g. SCHED, NET_RX\n");
      printf("usage: -I <label> Show the IRQ activity for that vector from /proc/interrupts e.g. 75, NMI\n");
      printf("usage: -M <string> Sum the IRQ activity across all vectors that match this terminal string e.g. p5p1-TxRx\n");
-     printf("usage: -P <string> Show the activity in the softnet_stats by column: packets, dropped, squeeze\n");
-     printf("Version %f, Limits: max_metrics=%d, max_cpus=%d, clock tick ms=%d\n",VERSION, MAX_METRICS, MAX_CPUS,topology.clock_tick_ms);
+     printf("usage: -P <string> Show the activity in the softnet_stats by column: packets, dropped, squeeze\n\n");
+     printf("usage: -Z <string> Choose a color scale: bgy (blue green yellow, default), red (red temperature scale for loren acton), rbw (rainbow, long to short wavelengths)\n\n");
+     printf("Version %f, Limits: max_metrics=%d, max_cpus=%d, clock tick ms=%d\n\n",VERSION, MAX_METRICS, MAX_CPUS,topology.clock_tick_ms);
      printf("CPU time. This is taken from the jiffies from /proc/stat. Its then scaled up to milliseconds using _SC_CLK_TCK.\n");
      printf("\tThis means that 100%% cpu is 1000ms per second. This displays as the number 'a'\n");
+     printf("Scale is log2. So '9' is a delta of 2^9 (or 1<<9) per interval\n\n");
+     printf("Colours and scales\n");
+     printf("\tbgy\tred\trbw\tmono\tscale\n");
+     for (i=0;i<max_colors;i++) {
+	  printf("\t%s%s%s%x%s\t%s%s%s%x%s\t%s%s%s%x%s\t%s%s%s%x%s - 2^%d or %d\n",C_START,bgy_scale[i],C_END,i,C_RESET,C_START,red_temp_scale[i],C_END,i,C_RESET,C_START,rbw_scale[i],C_END,i,C_RESET,C_START,mono_scale[i],C_END,i,C_RESET,i,(1<<i));
+     }
+     
      exit(0);
 }
 
@@ -469,9 +485,11 @@ int main(int argc,char *argv[])
      
      int interval = 1;
      int timespan = -1;
-          
-     const char *optstring="C:I:S:M:P:t:i:h";
+     
+     const char *optstring="C:I:S:M:P:t:i:Z:h";
 
+     colors = bgy_scale;
+     
      irqnuma_init_topology();
      
      metric_count = 0;
@@ -518,6 +536,12 @@ int main(int argc,char *argv[])
 	       break;
 	  case 'i':
 	       interval = atoi(optarg);
+	       break;
+	  case 'Z':
+	       // default is bgy
+	       if (strncmp(optarg,"red",3) == 0) colors=red_temp_scale;
+	       if (strncmp(optarg,"rbw",3) == 0) colors=rbw_scale;
+	       if (strncmp(optarg,"mono",4) == 0) colors=mono_scale;
 	       break;
 	  case 'h':
 	  default:
