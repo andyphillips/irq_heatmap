@@ -24,17 +24,64 @@ Allows a terminal visualisation of activity in the following files;
 ### CPU 
 ![simple cpu heatmap][simple_cpu]
 
+This is a two socket machine. It's slightly damaged as can be seen from the numbering of the cores and asymmettry. 
+Socket 0 has hyperthreads with 2 hyperthreads per core. Linux's view of the cpu number is listed in the cpu column.
 
+So socket 0 has the following cpus listed by hyperthread siblings; (06,16), (07,17), (08,18), (09,19)
 
+The user time is being show using the default blue-green-yellow scale. Each second the number of milliseconds
+spent by the cpu in user state is shown on a log2 scale. In this case, 100% cpu would be 1000 ms/second which
+is shown by the character 'a'. The scales and colour maps are in the help - see below. 
 
+### Network Interrupts 
+![network interrupts][network_interrupts]
 
+This is a larger machine. It has a symmettrical topology, with 8 cores per socket and 2 hyperthreads per core. 
+The -M option sums all interrupt vectors in /proc/interrupts that match the given tag. In this case p5p1 and p5p2 which 
+are the two legs of an MLAG bond. The interrupts and l4 hashing of the flows gives a striping effect. We can also see that 
+this system has both of these interfaces attached to socket 0, and that numa local irq pinning is in effect. 
 
+### Softirq network 
+![softirq interrupts][softirq_interrupts]
 
+Again on the same machine. This time we're looking at softirq stats. In this case we can see that there's a bit of
+softnet squeeze happening, but at a very low level. This color scale runs from dark blue through green to yellow and white. 
 
+## Color Scales 
 
+Sometimes you're interested in the top range, sometimes in the bottom. There are several color scales that can be used. 
+![color scales][color_scales]
 
+And some examples of looking at cpu, network and softirq in each. 
 
+### default, bgy
+![bgy heatmap][bgy_heatmap]
 
+The default. Colors range from blue at the bottom up through green and yellow to white. 
 
+### red temperature 
+![red temperature][red_heatmap]
+
+This one looks a bit halloween but is useful for folks with missing color receptors. 
+
+### rainbow/acid 
+![rainbow heatmap][rbw_heatmap]
+
+This accentuates the bottom of the range. It runs from red (lowest energy/longest wavelength) up through 
+orange, green, blue to purple. You memorised the order in primary school. The time squeeze shows up nicely
+as does the scattered cpu usage on socket 1. 
+
+### mono 
+![monochrome heatmap][mono_heatmap]
+
+Useful late at night. 
 
 [simple_cpu]:https://github.com/andyphillips/irq_heatmap/raw/master/images/cpu_simple.png
+[network_interrupts]:https://github.com/andyphillips/irq_heatmap/raw/master/images/network_interrupts.png
+[softnet_interrupts]:https://github.com/andyphillips/irq_heatmap/raw/master/images/softnet_interrupts.png
+[color_scales]:https://github.com/andyphillips/irq_heatmap/raw/master/images/color_scales.png
+[bgy_heatmap]:https://github.com/andyphillips/irq_heatmap/raw/master/images/bgy_heatmap.png
+[red_heatmap]:https://github.com/andyphillips/irq_heatmap/raw/master/images/red_heatmap.png
+[rbw_heatmap]:https://github.com/andyphillips/irq_heatmap/raw/master/images/rbw_heatmap.png
+[mono_heatmap]:https://github.com/andyphillips/irq_heatmap/raw/master/images/mono_heatmap.png
+
