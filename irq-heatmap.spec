@@ -8,7 +8,6 @@ Group:   	atp/misc
 License:    	GPL 
 Source0:   	irq-heatmap-%version.tar.gz
 BuildRoot: 	/tmp/rpmbuild
-BuildRequires:  cproto
 
 %description
 This command line tool makes heatmaps of multiple linux stats exposed via /proc in a processor topology
