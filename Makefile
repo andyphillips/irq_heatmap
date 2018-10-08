@@ -18,8 +18,7 @@ clean:
 
 $(PKGVERSION).tar.gz:
 	make clean
-	rm -rf build/*
-	mkdir -p $(RPM_BUILD_DIR)
+	test ! -d $(RPM_BUILD_DIR) && mkdir -p $(RPM_BUILD_DIR) 
 	cp -rp $(FILES)  $(RPM_BUILD_DIR)
 	cp -rp irq-heatmap.spec Makefile configure $(RPM_BUILD_DIR)
 	cp -rp etc $(RPM_BUILD_DIR)
