@@ -8,6 +8,8 @@ Group:   	atp/misc
 License:    	GPL 
 Source0:   	irq-heatmap-%version.tar.gz
 BuildRoot: 	/tmp/rpmbuild
+Requires:	numactl
+Requires:  	kernel-devel
 
 %description
 This command line tool makes heatmaps of multiple linux stats exposed via /proc in a processor topology
@@ -29,7 +31,6 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root,-)
-/opt/irq-heatmap
 %attr(755, root, root) /opt/irq-heatmap/bin/irq_heatmap
 %attr(755, root, root) /etc/profile.d/irq-heatmap.sh
 
