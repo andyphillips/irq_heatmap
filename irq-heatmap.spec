@@ -9,7 +9,7 @@ License:    	GPL
 Source0:   	irq-heatmap-%version.tar.gz
 BuildRoot: 	/tmp/rpmbuild
 Requires:	numactl
-Requires:  	kernel-devel
+BuildRequires:  kernel-devel
 
 %description
 This command line tool makes heatmaps of multiple linux stats exposed via /proc in a processor topology
