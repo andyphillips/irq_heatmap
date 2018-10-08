@@ -112,3 +112,20 @@ CPU time. This is taken from the jiffies from /proc/stat. Its then scaled up to 
 	   This means that 100% cpu is 1000ms per second. This displays as the number 'a'
 
 Scale is log2. So '9' is a delta of 2^9 (or 1<<9) per interval
+
+## Building
+
+### Redhat 
+
+Ensure you have the kernel-devel and numactl packages installed
+    # yum install kernel-devel numactl 
+
+Then run make to build the binary, or 'make rpm' to build an rpm 
+   
+### Ubuntu 
+
+Ensure you have the libnuma-dev and libnuma1 packages installed 
+    # apt install libnuma1 libnuma-dev 
+    
+    Then run make. 
+    

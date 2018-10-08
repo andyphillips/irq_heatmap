@@ -106,7 +106,7 @@ int irqnuma_get_threadid(int cpuid)
      return j;
 }
 
-void irqnuma_add_cpu_to_topology(cpuid,socket,coreid,thread_id) 
+void irqnuma_add_cpu_to_topology(int cpuid,int socket, int coreid, int thread_id) 
 {
      int cc,tc;
      
